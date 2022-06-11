@@ -1,4 +1,4 @@
-/var/log.hdd/svxlink {
+/var/log/svxlink {
     rotate 1
     missingok
     notifempty

@@ -11,14 +11,21 @@
 #
 # By default this script does nothing.
 
+# Raspberry Pi GPIO
 
-## Set TRX Config
-#/opt/sa818/trx/prog.sh
+# PTT 
+#echo "5" > /sys/class/gpio/export
+#sleep 1
+#echo out > /sys/class/gpio/gpio5/direction
+sleep 1
+chmod 0777 /sys/class/gpio/gpio5/value
 
-
-# Orange Pi Zero GPIO permision
-chmod 0777 /sys/class/gpio/gpio7/value
-chmod 0777 /sys/class/gpio/gpio10/value
+# SQL dla SA818
+#echo "19" > /sys/class/gpio/export
+#sleep 1
+#echo in > /sys/class/gpio/gpio19/direction
+sleep 1
+chmod 0777 /sys/class/gpio/gpio19/value
 
 #restore sound card settings
 #alsactl restore
