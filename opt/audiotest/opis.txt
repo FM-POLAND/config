@@ -1,9 +1,4 @@
-Aby skorzystac z tego testu aduio musisz miec
-zainstalowany loklany serwer wwww np apache2, lighttpd
-oraz php.
-
-
-Poniżej opis jak zrobić lokalny test pomiarów poziomu naszego
+﻿Poniżej opis jak zrobić lokalny test pomiarów poziomu naszego
 audio jakie wychodzi do sieci SVXReflectora. 
 W tym celu będzie wykorzystana karat wirtualna ALSA Loop i 
 audio z svxlink będzie można nagrywać poprzez taka wirtualną kartę i odsłuchać
@@ -16,13 +11,13 @@ audio w skali dB.
 Ładowanie wirtualnej karty dźwiękowej ALSA Loopback:
 ====================================================
 
-Dopisz do pliku /etc/modules
+Dopisz do pliku /etc/modules:
 
-  snd_aloop
+snd_aloop
 
-Dopisz linie na poczatku pliku w /etc/modprobe.d/alsa.conf
+Dopisz na poczatku pliku linie poniższą w pliku /etc/modprobe.d/alsa.conf
 
-  options snd_aloop index=1
+  options snd-aloop index=1
 
 
 Zrób reboot komputera
@@ -31,10 +26,11 @@ Możesz sprawdzić poleceniem czy widać kartę Loopback:
 
 cat /proc/asound/cards
 
-Będzie widać w wykazie Loopback pod numerem:
+Będzie widać w wykazie Loopback pod numerem 1 
 
- 0 [Headphones     ]: bcm2835_headpho - bcm2835 Headphones
-                      bcm2835 Headphones
+
+ 0 [Device         ]: USB-Audio - USB Audio Device
+                      GeneralPlus USB Audio Device at usb-20980000.usb-1, full speed
  1 [Loopback       ]: Loopback - Loopback
                       Loopback 1
 
@@ -77,11 +73,11 @@ http://ip_hotspota/audio/
 Wybierz grupę testowa np TG999  uzwajając DTMF
 kodu: 91999#
 
-Kliknij klawisz "Klikij aby nagrać testowe audio 15 sec"
+Kliknij klawisz "Nagraj testowe audio 10 sec"
 
 Mów do mikrofonu tak jakbyś przeprowadzał łączność
 
-Czas nagrania maksymalny to 15 sekund.
+Czas nagrania maksymalny to 10 sekund.
 
 Po zakończeniu nagrywania strona na dsahboard odświeży się
 (na chwile pokaże sie kolorowy wskaźnik miernika poziomu)

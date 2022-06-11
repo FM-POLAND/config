@@ -8,7 +8,7 @@ then
 rm /var/www/html/audio/*.wav
 fi 
 echo ""
-echo "Nagrywanie audio 10 sek, aby zatrzymać nagrywanie przed 10 sekundami użyj klawiszy CTRL+C"
+echo "Aby zatrzymać nagrywanie użycj klawiszy CTRL+C"
 echo " "
 arecord -D hw:Loopback,1,4 -V mono -r 48000 -f S16_LE -c1 -d 15 /var/www/html/audio/audio-$(date +%Y-%m-%d-%H-%M-%S).wav
 echo ""
