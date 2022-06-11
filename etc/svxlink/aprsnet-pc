@@ -1,6 +1,6 @@
 #!/bin/bash
 
-###############  Start Configuration ##########################################################
+#################  Start Configuration ##############################################################
 # Define object user info
 
 # Define login info to aprs server your callsign and password
@@ -8,13 +8,14 @@
 user=N0CALL
 password=12345
 
-# set callsign APRS and SSID  -10 is OK
+# set APRS callsign and SSID  -10 is OK
 callsign=N0CALL-10
 
-# PHG1000/ status nadajnika patrz http://www.aprs.pl/phg.htm
+# PHG1000/  status o naszym nadajniku patrz http://www.aprs.pl/phg.htm
+#
 comment="PHG1000/FM Hotspot SvxLink Node "
-
-# dodatkowe info np o dashboard sieci itp
+# 
+# dodatkowe info np link do dashboard sieci itp
 info_status="Dashboard http://svxlink.pl:888"
 
 # Define station location in format below Dergees (dd) Minutes (mm)
@@ -32,7 +33,7 @@ lon=02100.92E
 # Temperatua offset for OZPI LTS v1.5 set to value 30
 toffset=0
 
-############# End Configuration #############################################
+##################End of Configuration ###############################################################
 
 #Define APRS-IS server
 server=poland.aprs2.net
@@ -49,8 +50,7 @@ status="$senduser>APN100,TCPIP*:>${info_status}"
 aprsauth="user $user pass $password"
 
 #Read CPU temperature
-tempraw=`cat /sys/class/thermal/thermal_zone0/temp`
-tpp=` echo "$tempraw/1000+$toffset"|bc`
+tempraw=`sensors | grep -i "Core 0" | grep "$1" | sed -re "s/.*:[^+]*?[+]([.0-9]+)[ °]C.*/\1/g"`
 
 # CPU Load
 cpul=`grep 'cpu ' /proc/stat |awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'`
@@ -64,9 +64,9 @@ cpul=`grep 'cpu ' /proc/stat |awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usa
 #convert it to 403. If tempraw=8.5, it will convert 
 #it to 85 and we'll add the leading zero
 #to create 3 number format 085 later bellow.
-temp="$(echo "$tpp * 10" | bc | awk -F. '{print $1}')"
+temp="$(echo "$tempraw * 10" | bc | awk -F. '{print $1}')"
 cpu="$(echo "$cpul" | bc | awk -F. '{print $1}')"
-#echo $temp
+
 
 #Project comment
 projectcomment="Hotspot CPU AVG/Temperature"
@@ -107,7 +107,6 @@ if [ $nchr != "9" ]
 then
  senduser="$(printf %-9s $callsign)"
 fi
-
 
 #Define telemetry parameters
 t2="$user>APN001,TCPIP*::$senduser:PARM.CPU Temp,CPU Usage"
