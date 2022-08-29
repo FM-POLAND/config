@@ -1,0 +1,4 @@
+CRONDARGS=-1 -m off
+MAILTO=""
+# APRS dla wersji komputerow PI (RPI, OZPI)
+*/10 * * * * root /opt/fmpoland/aprs/aprsnet-pi 2>&1 >/dev/null

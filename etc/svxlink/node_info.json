@@ -6,12 +6,13 @@
   "LONG": "",
   "TXFREQ": "",
   "RXFREQ": "",
-  "Website": "http://svxlink.pl:888/",
+  "CTCSS": "0",
+  "DefaultTG": "",
   "Mode": "FM",
   "Type": "3",
   "Echolink": "0",
   "nodeLocation": "Miasto, PL",
   "Sysop": "N0CALL",
-  "LinkedTo": "FM Poland",
-  "CTCSS": "0"
+  "Website": "http://svxlink.pl:888/",
+  "LinkedTo": "FM Poland"
 }

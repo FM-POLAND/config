@@ -1,0 +1,4 @@
+CRONDARGS=-1 -m off
+MAILTO=""
+# get hydro info w godzinach miedzy 6 a 23 2 min przed pelna godzina
+54 5-23 * * * root /opt/fmpoland/hydro-info/hydro.pl >/dev/null 2>&1
