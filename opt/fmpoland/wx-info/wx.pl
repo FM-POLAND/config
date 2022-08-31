@@ -69,20 +69,18 @@ if(!$snow){ $snow=0; } else {$snow = sprintf("%.1f", $snow);};
 open(WX,">/var/spool/svxlink/bulletins/wx.tcl");
 
   print WX "playMsg \"MetarInfo\" \"wx\";\n";
-  print WX "playMsg \"MetarInfo\" \"temperature\";\n";
+  print WX "playMsg \"MetarInfo\" \"temp_ar\";\n";
   if ($temp < 0) {
         print WX "playMsg \"MetarInfo\" \"minus\";\n";
       }
   print WX "playNumber $temp;\n";
-  print WX "playMsg \"MetarInfo\" \"unit_degree\";\n";
 
 if ( $temp != $temp_feels) {
-  print WX "playMsg \"MetarInfo\" \"temperature_feels\";\n";
+  print WX "playMsg \"MetarInfo\" \"temp_air_feels\";\n";
   if ($temp < 0) {
         print WX "playMsg \"MetarInfo\" \"minus\";\n";
       }
   print WX "playNumber $temp_feels;\n";
-  print WX "playMsg \"MetarInfo\" \"unit_degree\";\n";
 }
   print WX "playMsg \"MetarInfo\" \"humidity\";\n";
   print WX "playNumber $hum;\n";
