@@ -67,9 +67,6 @@ proc startup {} {
   #playMsg "Core" "online"
   #send_short_ident
   playSilence 1000;
-  #send_short_ident
-  #playSilence 350;
-  #puts "Playing Welcome MSG"
   playMsg "Core" "welcome_fmpoland";
   playSilence 350;
 }
@@ -220,7 +217,7 @@ proc send_long_ident {hour minute} {
    playSilence 100;
   # Play CW id if enabled
   if {$long_cw_id_enable} {
-      puts "Playing long CW ID"
+    puts "Playing long CW ID"
       CW::play $mycall
       playSilence 100
    }

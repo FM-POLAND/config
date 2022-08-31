@@ -101,27 +101,12 @@ zrób ponownie procedurę nagrywania audio. Powtarzaj to aż do uzyskanie
 rekomendowanych ustawień audio. 
 
 
-Po zakończeniu testów:
-======================
-
-Najpierw zrób kopie testowego svxlink.conf (może sie znów kiedyś przyda)
-
-cp /etc/svxink/svxlink.conf /etc/svxlink/svxlink-audio.conf
-
-Przywróć swój svxlink.conf 
-
-cp /etc/svxlink/svxlink-kopia.conf /etc/svxlink/svxlink.conf
-
-Zrób restart svxlink poleceniem:
-
-systemctl restart svxlink
-
 ==========================
 
 
 Możesz także ręcznie nagrywać audio poleceniem:
 
-/opt/audiotest/audio.sh
+/opt/fmpoland/audiotest/audio.sh
 
 mów do mikrofonu tak jakbyś przeprowadzał łączność
 

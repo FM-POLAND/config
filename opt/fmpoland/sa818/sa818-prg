@@ -1,0 +1,552 @@
+#!/usr/bin/python2
+# SA818/SHARI programmer by N8AR 2020/10/12.
+#Version 2.00
+#Created by modifying 
+#   A Simple SerialProgrammer for the 818 VHF/UHF Modules
+#   by w0anm which was created from examples on the web
+#   This code was originally,
+#   $Id: 818-prog 12 2014-12-27 18:27:47Z w0anm $
+
+#Change Log
+
+#Version 1.03 - Added 1 second sleep times after writing to SA818
+
+#Version 1.04 - Fixed issue that Reverse Burst could not be turned off
+#unless Subaudible Tone was selected.  Also changed acceptable squelch
+#value range from 1-9 to 1-8
+
+#Version 1.05 - Added communications check at beginning of program
+
+#Version 1.06 - Added more error checking and reporting when sending commands to SA818
+
+# Version 1.07 - Added code by N4IRS to write last configuration to /root/SA818.log
+# N8AR added code to print the contents of the log file at the start of the program
+
+# Version 2.00
+# Updates by KI5KQB
+# - Update -v flag to print version before asking for inputs
+# - Install signal handler to gracefully exit on ctl+C
+# - Move log file to user's home directory
+# - Update volume and squelch bounds according to documentation
+# - Redo bounds checking on Tx/Rx frequencies
+# - Cleanup of python code
+# - Add -r flag for reading signal strength
+# - Compatibility adaptations for python2/python3
+
+# Version 2.01
+# Fixed CTCSS error in line 62.  Was:71.0  Is: 71.9
+
+import time
+import serial
+import sys
+import os.path
+import signal
+
+### VARIABLE DECLARATIONS ###
+
+tx_ctcss = ''
+rx_ctcss = ''
+tx_dcs = ''
+rx_dcs = ''
+CTCSS_RB = 'n'
+CTCSS_Reverse_Burst = '0'
+prog_ver = '2.01'
+homedir = os.path.expanduser('~')
+logfile = homedir + '/opt/fmpoland/sa818/SA818.log'
+CRLF='\r\n'
+
+#CTCSS tone to code dictionary
+codelookup = {
+	"0": "0000", 
+	"67.0": "0001",
+	"71.9": "0002",
+	"74.4": "0003",
+	"77.0": "0004",
+	"79.7": "0005",
+	"82.5": "0006",
+	"85.4": "0007",
+	"88.5": "0008",
+	"91.5": "0009",
+	"94.8": "0010",
+	"97.4": "0011",
+	"100.0": "0012",
+	"103.5": "0013",
+	"107.2": "0014",
+	"110.9": "0015",
+	"114.8": "0016",
+	"118.8": "0017",
+	"123.0": "0018",
+	"127.3": "0019",
+	"131.8": "0020",
+	"136.5": "0021",
+	"141.3": "0022",
+	"146.2": "0023",
+	"151.4": "0024",
+	"156.7": "0025",
+	"162.2": "0026",
+	"167.9": "0027",
+	"173.8": "0028",
+	"179.9": "0029",
+	"186.2": "0030",
+	"192.8": "0031",
+	"203.5": "0032",
+	"210.7": "0033",
+	"218.1": "0034",
+	"225.7": "0035",
+	"233.6": "0036",
+	"241.8": "0037",
+	"250.3": "0038"
+}
+# DCS codes.
+dcs_codes = ["023", "025", "026", "031", "032", "036", "043", "047", "051", "053",
+	"054", "065", "071", "072", "073", "074", "114", "115", "116", "122",
+	"125", "131", "132", "134", "143", "145", "152", "155", "156", "162",
+	"165", "172", "174", "205", "212", "223", "225", "226", "243", "244",
+	"245", "246", "251", "252", "255", "261", "263", "265", "266", "271", 
+	"274", "306", "311", "315", "325", "331", "332", "343", "346", "351",
+	"356", "364", "365", "371", "411", "412", "413", "423", "431", "432",
+	"445", "446", "452", "454", "455", "462", "464", "465", "466", "503",
+	"506", "516", "523", "526", "532", "546", "565", "606", "612", "624",
+	"627", "631", "632", "654", "662", "664", "703", "712", "723", "731",
+	"732", "734", "743", "754"]
+
+
+### FUNCTION DEFINITIONS ###
+
+#Install a signal handler so that the user can cancel by pressing Ctl+C
+def sigterm_handler(_signo, _stack_frame):
+	print ('\n')
+	print ('------------------------------------------------------')
+	print("You terminated the program. Exiting now.")
+	print ('------------------------------------------------------')
+	print ('')
+	exit()
+
+signal.signal(signal.SIGINT, sigterm_handler)
+
+#Function to help convert back and forth from bitstrings
+def writeSerial(ser, string):
+	ser.write((string + CRLF).encode())
+	time.sleep(1.00)
+	raw_serial = ser.readline()
+	return raw_serial[:-2].decode()
+
+#Attempt to handle input on both python3 and python2
+def my_input(prompt):
+	try:
+		return raw_input(prompt).strip()
+	except NameError:
+		return input(prompt).strip()
+
+# Function to prompt for y/n answer 
+def yesNoPrompt(prop):
+	while True:
+		val=my_input('Enable ' + prop + ' (y/[n]): ').lower() or 'n'
+		if val == 'y':
+			print('\t' + prop + ' is enabled\n')
+			break
+		if val == 'n':
+			print('\t' + prop + ' is not enabled\n')
+			break
+		else:
+			print("Must enter Y or N")
+	return val
+
+
+### MAIN PROGRAM STATEMENTS ###
+
+# Retrieve the last SA818 configuration done by this program and print it.
+if os.path.exists(logfile):
+	a_file = open(logfile)
+	lines = a_file.readlines()
+	for line in lines:
+		line = line.rstrip('\n')
+		print(line)
+	a_file.close()
+else:
+	print ('No previous programming data available.\n')
+
+# configure the serial connections (the parameters differs on the device 
+# you are connecting to).  ttyUSB0 is used for SHARI PiXX and SA818
+# ttyAMA0 is used for SHARI PiHat.  Selection is automatic.
+device_list = ['/dev/ttyUSB0', '/dev/ttyS1', '/dev/ttyS2','/dev/ttyAMA0']
+for device in device_list:
+	try:
+		ser = serial.Serial(
+		port=device,
+		baudrate=9600,
+		parity=serial.PARITY_NONE,
+		stopbits=serial.STOPBITS_ONE,
+		bytesize=serial.EIGHTBITS,
+		timeout=1
+		)
+	except Exception as e:
+		if device == device_list[-1]:
+			print ('Could not open any of these serial devices:\n' + '\t\n'.join(device_list) )
+			print(e)
+			exit()
+	else:
+		#We found a device that works, just break the loop
+		break
+
+# Splash screen
+print ('------------------------------------------------------')
+print ('')
+print ('SA818-prog, Version ' + prog_ver)
+print ('Programing SHARI PiXX / SHARI PiHat / SA818(U/V) Module')
+print ('Programming Device name:')
+print ('      ' + ser.portstr)       # show which port was really used
+print ('')
+print ('------------------------------------------------------')
+print ('')
+
+# Check for serial communications with the SA818
+print ('Testing serial communications')
+response = writeSerial(ser,"AT+DMOCONNECT")
+if response == "+DMOCONNECT:0": 
+	print ('Serial communications with the SA818 module are OK')
+	print ("")
+else:
+	print("No serial communication with the SA818 module")
+	exit()
+
+# Read and print firmware version.  Invoke this by using SA818-prog -v to start program
+if '-v' in sys.argv:
+	print ('Reading firmware version')
+	response = writeSerial(ser,"AT+VERSION")
+	print (" Firmware Version " + response + "\n")
+
+# Go into loop that outputs radio signal strength. Invoke this by using SA818-prog -r
+if '-r' in sys.argv:
+	print ("Monitoring Radio Signal Strength (press Ctl+c to exit)")
+	while True:
+		response = writeSerial(ser,"RSSI?")
+		print (response)
+
+
+# Ask what we are programming (1-SHARI PiXX 2-SHARI PiHat  3-SA818 Module)
+# If PiXX or PiHat set the channel spacing to wide
+while True:
+	print('What are you programming?')
+	Device=my_input("Enter 1,2 or 3 where SHARI PiXX=1, SHARI PiHat=2, SA818 Module=3: ")
+	if Device == '1':
+		print('\n	Programming a SHARI PiXX')
+		print('	Wide channel spacing')
+		print('')
+		Spacing = '1'
+		break
+	elif Device == '2':
+		print('\n	Programming a SHARI PiHat')
+		print('	Wide channel spacing')
+		print('')
+		Spacing = '1'
+		break
+	elif Device == '3':
+		print('\nProgramming a generic SA818 module')
+		break
+	else:
+		print("	Sorry, you must enter either a 1, 2 or 3\n")
+
+# Programming a generic SA818 module so we have to enter a channel spacing	
+if Device == '3':
+	while True:
+		Spacing=my_input('Enter Channel Spacing (Narrow=0 or Wide=1): ')
+		if Spacing == '0':
+			print('\n	Programming an SA818 module')
+			print('	Narrow channel spacing')
+			print('')
+			break
+		elif Spacing == '1':
+			print('\n	Programming an SA818 module')
+			print('	Wide channel spacing')
+			print('')
+			break
+		else:
+			print("	Sorry, you must enter eiher a 0 or a 1")
+
+if Spacing == '1':
+	SpacingFreq = .025
+else:
+	SpacingFreq = .0125
+
+# Ask which band, UHF or VHF	
+while True:
+	Band=my_input('Enter band (VHF=1, UHF=2): ')
+	if Band == '1':
+		print("	You chose VHF")
+		print('')
+		MinFreq=144
+		MaxFreq=148
+		break 
+	elif Band == '2':
+		print("	You chose UHF")
+		print('')
+		MinFreq=420
+		MaxFreq=450
+		break 
+	else:
+		print("	Sorry, you must enter either a 1 or a 2\n")
+
+
+# Ask for transmit frequency.  Make sure it is in 2m or 70 cm ham band. Correct input format errors
+while True:
+	try:
+		freq=float(my_input('Enter transmit frequency in MHz (xxx.xxxx): '))
+		if freq < MinFreq or freq > MaxFreq:
+			raise ValueError()
+	except ValueError:
+			print("The Tx frequency must be entered as (xxx.xxxx) and must be between " + '{0:.4f}'.format(MinFreq) + " and " + '{0:.4f}'.format(MaxFreq) + " MHz.\n")
+	else:
+        # Save string with 4 decimal places
+		FreqTx = '{0:.4f}'.format(freq)
+		print('	The transmit frequency is ' + FreqTx + ' MHz\n')
+		break
+
+
+# Ask for receive frequency.  Make sure it is in 2m or 70 cm ham band. Correct input format errors
+while True:
+	try:
+		freq=float(my_input('Enter receive frequency in MHz (xxx.xxxx): '))
+		if freq < MinFreq or freq > MaxFreq:
+			raise ValueError()
+	except ValueError:
+			print("The Rx frequency must be entered as (xxx.xxxx) and must be between " + '{0:.4f}'.format(MinFreq) + " and " + '{0:.4f}'.format(MaxFreq) + ".\n")
+	else:
+        # Save string with 4 decimal places
+		FreqRx = '{0:.4f}'.format(freq)
+		print('	The receive frequency is ' + FreqRx + ' MHz\n')
+		break
+
+
+#Ask if using subaudible tone
+while True:
+	audtone=my_input('Do you want to use a sub audible tone? (0 = No, 1 = CTCSS, 2= DCS): ')
+	if audtone == '0':
+		print("	You chose No SubAudible Tone\n")
+		tx_ctcss = "0000" #The string '0000' means no sub-audible tone
+		rx_ctcss = "0000" #for transmit and/or receive
+		break 
+	elif audtone == '1':
+		print("	You chose CTCSS\n")
+		break 
+	elif audtone == '2':
+		print("	You chose DCS\n")
+		break 
+	else:
+		print("	Sorry, you must enter either 0, 1 or 2\n")
+
+#CTCSS options
+if audtone == '1':
+	while True:
+		txctcss=my_input('Enter Tx CTCSS Frequency in Hz(xxx.x): ')
+		if txctcss in codelookup:
+			print('	You entered ' + txctcss + ' Hz') 
+			tx_ctcss = codelookup[txctcss]
+			print('	The Tx CTCSS code is ' + tx_ctcss + '\n')
+			break
+		else:
+			print("	Tx CTCSS frequency is incorrect, please re-enter\n")
+	
+	while True:
+		rxctcss=my_input('Enter Rx CTCSS Frequency in Hz(xxx.x): ')
+		if rxctcss in codelookup:
+			print('	You entered ' + rxctcss + ' Hz') 
+			rx_ctcss = codelookup[rxctcss]
+			print('	The Rx CTCSS code is ' + rx_ctcss + '\n')
+			break
+		else:
+			print("	Rx CTCSS frequency is incorrect, please re-enter\n")
+
+#DCS options
+if audtone == '2':
+	while True:
+		ans=my_input('Would you like a list of valid DCS codes? (y/[n]): ').lower() or 'n'
+		if ans == "y":
+			print('')
+			print('A valid DCS code is three digits as shown in the following table')
+			print('followed by an N (normal) or I (inverted)')
+			print('')
+			for i,a in enumerate(dcs_codes):
+				print(a + ' '),
+				if i % 8 == 7:
+					print("")
+
+		tx_dcs=my_input('\nEnter Tx DCS Code (xxxx): ').upper()
+		if len(tx_dcs) == 4 and tx_dcs[0:3] in dcs_codes and tx_dcs[3] in ["I", "N"]:
+			print('	You entered ' + tx_dcs + '\n')
+			break
+		else:
+			print('	Code is incorrect')
+			print('	Please re-enter as three digits followed by an N or I')
+	
+	while True:
+		rx_dcs=my_input('Enter Rx DCS Code (xxxx): ').upper()
+		if len(rx_dcs) == 4 and rx_dcs[0:3] in dcs_codes and rx_dcs[3] in ["I", "N"]:
+			print('	You entered ' + rx_dcs + '\n')
+			break
+		else:
+			print('	Code is incorrect')
+			print('	Please re-enter as three digits followed by an N or I')
+
+#Ask about reverse burst for CTCSS or DCS
+if audtone != '0':
+	CTCSS_RB = yesNoPrompt("Reverse Burst")
+	if CTCSS_RB == 'y':
+		CTCSS_Reverse_Burst = '1'
+	else:
+		CTCSS_Reverse_Burst = '0'
+
+# Enter squelch value (0-8)
+while True:
+	try:
+		sq=int(my_input('Enter Squelch Value (0-8): '))
+		if sq < 0 or sq > 8:    
+			raise ValueError()
+	except ValueError:
+		print("	Squelch must be an integer between 0 and 8\n")
+	else:
+		squelch = str(sq)
+		print("	Squelch is set to " + squelch + "\n")
+		break
+
+# Enter volume value (1-8)
+while True:
+	try:
+		vol=int(my_input('Enter Volume (1-8): '))
+		if vol < 1 or vol > 8:
+			raise ValueError()
+	except ValueError:
+		print("	Volume must be an integer between 1 and 8\n")
+	else:
+		Volume = str(vol)
+		print("	Volume is set to " + Volume)
+		print('')
+		break
+
+# Ask about pre-emphasis
+PreEmphasis = yesNoPrompt("Pre/De-Emphasis")
+
+# Ask about high pass filter
+HighPass = yesNoPrompt("High Pass Filter")
+
+# Ask about low pass filter
+LowPass = yesNoPrompt("Low Pass Filter")
+
+# Format the outpus
+
+if audtone == '0':
+	audText = (
+'       Tx CTCSS code: 0000\n'
+'       Rx CTCSS code: 0000\n')
+if audtone == '1':
+	audText = (
+'       Tx CTCSS code: ' + tx_ctcss + ' Frequency: ' + txctcss + ' Hz\n'
+'       Rx CTCSS code: ' + rx_ctcss + ' Frequency: ' + rxctcss + ' Hz\n')
+if audtone == '2':
+	audText = (
+'         Tx DCS code: ' + tx_dcs + '\n'
+'         Rx DCS code: ' + rx_dcs + '\n')
+
+prettyText = ('------------------------------------------------------\n'
+'     Channel Spacing: ' + Spacing + '\n'
+'        Tx Frequency: ' + FreqTx + '\n'
+'        Rx Frequency: ' + FreqRx + '\n'
++ audText +
+'       Reverse Burst: ' + CTCSS_RB + '\n'
+'       Squelch Value: ' + squelch + '\n'
+'        Volume Value: ' + Volume + '\n'
+' PreEmphasis Enabled: ' + PreEmphasis + '\n'
+'   High Pass Enabled: ' + HighPass + '\n'
+'    Low Pass Enabled: ' + LowPass + '\n'
+'------------------------------------------------------\n')
+
+# Ask if the values are correct and whether to program the unit
+print ('\nVerify:')
+print (prettyText)
+Answer=my_input('Is this correct ([y]/n) ?').lower() or 'y'
+
+if Answer == 'y':
+	print
+
+if Answer == 'n':
+	print
+	print('Press the <UP-ARROW> and <enter> on your keyboard to re-run the program')
+	print
+	exit()
+
+# Print configuration to file N4IRS
+# Write a log of the configuration to ~/.SA818.log
+with open(logfile, 'w') as f:
+	f.write ('\nLast values programed to SA818:\n')
+	f.write (prettyText)
+
+# Write the data to the SA818 module
+
+# Set Freq/Group
+# Example of the command:
+#     ser.write("AT+DMOSETGROUP=1,446.0500,446.0500,0020,4,0020\r\n")
+print ('Sending Frequency, Sub Audible Tone, and Squelch Information...')
+if audtone == '0' or audtone == '1':
+	command = "AT+DMOSETGROUP=" + ",".join([Spacing,FreqTx,FreqRx,tx_ctcss,squelch,rx_ctcss])
+else:
+	command = "AT+DMOSETGROUP=" + ",".join([Spacing,FreqTx,FreqRx,tx_dcs,squelch,rx_dcs])
+response = writeSerial(ser,command)
+if response == "+DMOSETGROUP:0": 
+	print ('Frequency, Sub Audible Tone, and Squelch information correct')
+	print 
+else:
+	print("Frequency, Sub Audible Tone, and/or Squelch information were incorrect")
+	print ("Command Sent:")
+	print ("        " + command)
+	exit()
+
+# Set Volume
+
+print ("Setting Volume - " + Volume)
+command = "AT+DMOSETVOLUME=" + Volume
+response = writeSerial(ser, command)
+# Bad response --> +DMOSETVOLUME:1
+if response != '+DMOSETVOLUME:0':
+	print ("    Error, invalid information (" + response + ")...")
+	print (" Command Sent:")
+	print ("    " + command + "\n")
+	exit()
+
+# Set CTCSS Reverse Burst
+
+print ("Setting Reverse Burst")
+response = writeSerial(ser, "AT+SETTAIL=" + CTCSS_Reverse_Burst)
+#evaluate response
+# Can not evaluate because an error in NiceRF code always returns a '0'
+
+# Set Filters:
+# convert filters values, 0 is enable, and 1 is disable
+
+if PreEmphasis == "n":
+	PreEmpFilter='1'
+else:
+	PreEmpFilter='0'
+
+if HighPass == "n":
+	HPass='1'
+else:
+	HPass='0'
+
+if LowPass == "n":
+	LPass='1'
+else:
+	LPass='0'
+
+print ('Setting Filters\n')
+command="AT+SETFILTER=" + ','.join([PreEmpFilter,HPass,LPass])
+response = writeSerial(ser, command)
+# Bad response --> +DMOSETFILTER:1
+if response != '+DMOSETFILTER:0':
+	print ("    Error, invalid information (" + response + ")...")
+	print (" Command Sent:")
+	print ("    " + command + "\n")
+	exit()
+	
+print("Programming Successful\n")
+print("Configuration log written to " + logfile + "\n")
+
