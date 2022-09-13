@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# SP2ONG wx PERL script for openweathermap.org v20220812
+# SP2ONG wx PERL script for openweathermap.org v20220912
 #
 #  You must generate own free API Key on openwathermap.org
 #
@@ -11,12 +11,12 @@
 # 
 ######## Configuration #####################
 # API Key
-my $apikey="1234567891234567890";
+my $apikey="12345678901234567890";
 # wspolrzedne miejsca dla ktorego chcemy pobrac pogode
 # szerokosc np 53.01  
-my $lat="52.100";
+my $lat="51.219";
 # dlugosc np 18.6
-my $lon="18.033";
+my $lon="22.6962";
 ########################################
 
 use strict;
@@ -29,7 +29,8 @@ use Time::Piece;
 my $hour=localtime->strftime('%H');
 
 # Get weather info 
-my $url="https://api.openweathermap.org/data/2.5/onecall?lon=$lon&lat=$lat&exclude=minutely,hourly,daily&lang=pl&units=metric&appid=$apikey";
+
+my $url="https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lon&lang=pl&units=metric&appid=$apikey";
 
 my $decode = eval {decode_json(get($url))} ;
 
@@ -44,22 +45,24 @@ if(!$@){
 #print Dumper ($decode);
 #print length($decode);
 
- my $temp = int($decode->{'current'}{'temp'});
- my $temp_feels = int($decode->{'current'}{'feels_like'});
- my $hum = $decode->{'current'}{'humidity'};
- my $pres = int($decode->{'current'}{'pressure'});
- my $clouds = int($decode->{'current'}{'clouds'});
- my $winds = $decode->{'current'}{'wind_speed'};
- my $windd = $decode->{'current'}{'wind_deg'};
- my $weatherr = $decode->{'current'}{'weather'}[0]{'description'};
- my $weatherid = $decode->{'current'}{'weather'}[0]{'id'};
- my $uvi = $decode->{'current'}{'uvi'};
+ my $temp = int($decode->{'main'}{'temp'});
+ my $temp_feels = int($decode->{'main'}{'feels_like'});
+ my $hum = $decode->{'main'}{'humidity'};
+ my $pres = int($decode->{'main'}{'pressure'});
+ my $winds = $decode->{'wind'}{'speed'};
+ my $windd = $decode->{'wind'}{'deg'};
+ my $weatherr = $decode->{'weather'}[0]{'description'};
+ my $weatherid = $decode->{'weather'}[0]{'id'};
+ my $rain = $decode->{'rain'}{'1h'};
+ my $snow = $decode->{'snow'}{'1h'};
+
  my $windss="";
  my $winddd="";
- my $uv="";
 
- my $rain = $decode->{'current'}{'rain'}{'1h'};
- my $snow = $decode->{'current'}{'snow'}{'1h'};
+# Brak danych w API v2.5
+ #my $uvi = $decode->{'current'}{'uvi'};
+ my $uvi="0";
+ my $uv="";
 
 
 if(!$rain){ $rain=0; } else {$rain = sprintf("%.1f", $rain);};
@@ -69,7 +72,7 @@ if(!$snow){ $snow=0; } else {$snow = sprintf("%.1f", $snow);};
 open(WX,">/var/spool/svxlink/bulletins/wx.tcl");
 
   print WX "playMsg \"MetarInfo\" \"wx\";\n";
-  print WX "playMsg \"MetarInfo\" \"temp_ar\";\n";
+  print WX "playMsg \"MetarInfo\" \"temp_air\";\n";
   if ($temp < 0) {
         print WX "playMsg \"MetarInfo\" \"minus\";\n";
       }
@@ -173,6 +176,7 @@ if ($snow>0) {
   print WX "playMsg \"MetarInfo\" \"snow\";\n";
   print WX "playNumber $snow;\n";
 }
+# Brak danych UV w API v2.5
 if ($uvi>0) {
   print WX "playMsg \"MetarInfo\" \"uv\";\n";
 if ($uvi > 0.0 && $uvi < 3.0)
@@ -187,6 +191,7 @@ if ($uvi > 11.0 )
    { $uv="uv_extreme"; }
   print WX "playMsg \"MetarInfo\" \"$uv\";\n";
 }
+
 #  print WX "playMsg \"MetarInfo\" \"wx_source\";\n";
 } else { print WX "playMsg \"MetarInfo\" \"wx_nodata\";\n"; }
 
