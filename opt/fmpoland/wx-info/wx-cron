@@ -1,0 +1,4 @@
+CRONDARGS=-1 -m off
+MAILTO=""
+# get wx info w godzinach miedzy 6 a 23 2 min przed pelna godzina
+58,28 5-23 * * * root /opt/fmpoland/wx-info/wx.pl >/dev/null 2>&1

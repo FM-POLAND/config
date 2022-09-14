@@ -1,0 +1,14 @@
+#!/bin/sh
+
+[ -d /opt/backup-fmpl ] || mkdir /opt/backup-fmpl
+
+cd /opt/backup-fmpl/
+echo "Tworzenie kopi bezpieczenstwa ...."
+echo ""
+
+tar czvfP backupfmpl-`(date +%Y-%m-%d)`.tgz /etc/svxlink /opt/fmpoland /usr/share/svxlink/ /usr/local/bin/backupfm /etc/asound.conf /etc/modules /etc/modprobe.d/alsa.conf /etc/modprobe.d/options.conf 
+
+echo ""
+echo "Kopia bezpieczenstwa została utworzona w katalogu /opt/backup-fmpl/"
+echo ""
+
