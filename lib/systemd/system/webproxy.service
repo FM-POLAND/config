@@ -1,0 +1,20 @@
+[Unit]
+Description=Web Audio Proxy Service
+# Description=Place this file in /lib/systemd/system
+
+After=svxlink.service
+Requires=svxlink.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=3
+StandardOutput=null
+WorkingDirectory=/opt/fmpoland/WebProxy
+ExecStart=/usr/bin/node /opt/fmpoland/WebProxy/webproxy 8080 1235
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+

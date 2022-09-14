@@ -3,7 +3,3 @@ MAILTO=""
 # Restart svxlink every day at 6:00 and stop on 23:30
 30 23 * * * root systemctl stop svxlink
 0 6 * * * root systemctl start svxlink
-# APRS dla wersji komputerow PI (RPI, OZPI)
-#*/10 * * * * root /etc/svxlink/aprsnet-pi 2>&1 >/dev/null
-# APRS dla wersji PC terminale HP itp
-#*/10 * * * * root /etc/svxlink/aprsnet-pc 2>&1 >/dev/null

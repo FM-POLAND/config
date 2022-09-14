@@ -30,8 +30,6 @@ info_status="Dashboard http://svxlink.pl:888"
 lat=5300.57N
 lon=02100.92E
 
-# Temperatua offset for OZPI LTS v1.5 set to value 30
-toffset=0
 
 ##################End of Configuration ###############################################################
 
