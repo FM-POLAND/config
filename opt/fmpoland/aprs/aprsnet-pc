@@ -16,7 +16,7 @@ callsign=N0CALL-10
 comment="PHG1000/FM Hotspot SvxLink Node "
 # 
 # dodatkowe info np link do dashboard sieci itp
-info_status="Dashboard http://svxlink.pl:888"
+info_status="Dashboard http://fm-poland.pl:888"
 
 # Define station location in format below Dergees (dd) Minutes (mm)
 # https://aprs.fi 
