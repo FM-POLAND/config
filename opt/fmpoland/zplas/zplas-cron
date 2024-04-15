@@ -1,4 +1,0 @@
-CRONDARGS=-1 -m off
-MAILTO=""
-# 
-56 5-23 * 3-9 * root /opt/fmpoland/zplas/zplas.pl >/dev/null 2>&1
