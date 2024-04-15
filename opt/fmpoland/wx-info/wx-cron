@@ -1,4 +1,0 @@
-CRONDARGS=-1 -m off
-MAILTO=""
-# pobierz wx info z openweathermap 
-58,28 * * * * root /opt/fmpoland/wx-info/wx.pl >/dev/null 2>&1
